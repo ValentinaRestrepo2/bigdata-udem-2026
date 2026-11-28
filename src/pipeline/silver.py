@@ -81,14 +81,8 @@ def _metadatos_presentes(df: DataFrame) -> list[F.Column]:
 
 
 def deduplicar(df: DataFrame) -> DataFrame:
-    """Deja UNA fila por `_hash_fila`: si el mismo mes entró en dos lotes, queda una sola copia.
-
-    Dos filas con el mismo hash tienen exactamente los mismos valores en las columnas originales,
-    así que no importa cuál de las dos se conserva. Una tabla sin repetidos queda igual.
-    """
-    # PENDIENTE(equipo): hoy esta función devuelve df tal cual. Por eso, al reprocesar un mes,
-    # silver tiene cada fila dos veces (una por lote de bronze) y gold las multiplica.
-    return df
+    # _hash_fila identifica la fila completa: las repetidas de dos lotes tienen el mismo hash.
+    return df.dropDuplicates(["_hash_fila"])
 
 
 # --- funciones puras de la casa ---------------------------------------------------------------
@@ -182,6 +176,13 @@ def enriquecer(trips: DataFrame, zonas: DataFrame, clima: DataFrame) -> DataFram
     return (
         trips.join(F.broadcast(zonas_sel), "pu_location_id", "left")
         .join(F.broadcast(clima_sel), "pickup_date", "left")
+        .withColumn(
+            "DIA_LLUVIA",
+            F.when(F.col("lluvia_mm").isNull(), "sin_dato")
+            .when(F.col("lluvia_mm") > 0, "lluvia")
+            .when(F.col("lluvia_mm") == 0, "seco")
+            .otherwise("sin_dato"),
+        )
         .withColumn(
             "zona",
             F.coalesce(
