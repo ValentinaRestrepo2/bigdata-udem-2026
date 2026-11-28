@@ -177,6 +177,13 @@ def enriquecer(trips: DataFrame, zonas: DataFrame, clima: DataFrame) -> DataFram
         trips.join(F.broadcast(zonas_sel), "pu_location_id", "left")
         .join(F.broadcast(clima_sel), "pickup_date", "left")
         .withColumn(
+            "DIA_LLUVIA",
+            F.when(F.col("lluvia_mm").isNull(), "sin_dato")
+            .when(F.col("lluvia_mm") > 0, "lluvia")
+            .when(F.col("lluvia_mm") == 0, "seco")
+            .otherwise("sin_dato"),
+        )
+        .withColumn(
             "zona",
             F.coalesce(
                 F.col("zone_name"),
